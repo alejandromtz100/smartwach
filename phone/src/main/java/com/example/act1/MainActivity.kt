@@ -23,12 +23,6 @@ import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
 
-
-
-
-
-
-
 class MainActivity : AppCompatActivity(),
     CoroutineScope by MainScope(),
     DataClient.OnDataChangedListener,
@@ -74,36 +68,6 @@ class MainActivity : AppCompatActivity(),
         // Puedes iniciar conexión automáticamente si lo deseas
         //getNodes(this)
     }
-
-    /*fun post(url: String, jsonBody: String){
-        val client = OkHttpClient()
-        val JSON = "application/json; charset=utf-8".toMediaTypeOrNull()
-        val body = jsonBody.toRequestBody(JSON)
-
-        val request = Request.Builder()
-            .url(url)
-            .post(body)
-            .build()
-
-        client.newCall(request).enqueue(object : okhttp3.Callback {
-            override fun onFailure(call: okhttp3.Call, e: IOException){
-                //Manejo de error
-                Log.d("FETCH","Error: ${e.message}")
-            }
-
-            override fun onResponse(call: okhttp3.Call, response: okhttp3.Response) {
-                response.use{
-                    if (!response.isSuccessful){
-                        Log.d("FETCH","Error en la respuesta: ${response.code}")
-                    }else{
-                        //Aqui se maneja la respuesta, por ejemplo convertirla en string
-                        val responseData = response.body?.string()
-                        Log.d("FETCH","Respuesta: $responseData")
-                    }
-                }
-            }
-        })
-    }*/
 
     private fun getNodes(context: Context) {
         launch(Dispatchers.Default) {
@@ -197,7 +161,7 @@ class MainActivity : AppCompatActivity(),
     }
 
     private fun enviarDatosAlServidor(datos: String) {
-        val url = "https://apimovimientos.onrender.com/api/movimientos"
+        val url = "https://smart-3-2fii.onrender.com/api/movimientos"
         val client = OkHttpClient()
 
         try {
