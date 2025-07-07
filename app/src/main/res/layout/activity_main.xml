@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/root_layout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F9F9F9"
+    android:padding="24dp">
+
+    <!-- Botón azul con diseño moderno -->
+    <Button
+        android:id="@+id/dess"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="@drawable/button_background"
+        android:backgroundTint="#F44336"
+        android:elevation="4dp"
+        android:paddingStart="24dp"
+        android:paddingTop="12dp"
+        android:paddingEnd="24dp"
+        android:paddingBottom="12dp"
+        android:text="Acelerómetro"
+        android:textAllCaps="false"
+        android:textColor="#FFFFFF" />
+
+
+    <LinearLayout
+        android:id="@+id/alert_container"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:background="#FFEBEE"
+        android:padding="16dp"
+        android:layout_below="@id/dess"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="24dp"
+        android:visibility="gone"
+        android:gravity="center_vertical"
+        android:elevation="2dp"
+        android:layout_marginBottom="8dp"
+        android:backgroundTint="#FFCDD2">
+
+        <ImageView
+            android:id="@+id/alert_icon"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:layout_marginEnd="12dp"
+            android:src="@drawable/ic_alert" />
+
+        <TextView
+            android:id="@+id/alert_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Mensaje de alerta"
+            android:textColor="#C62828"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Texto de datos del sensor -->
+    <TextView
+        android:id="@+id/sensor_data"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Esperando datos..."
+        android:textColor="#333333"
+        android:textSize="15sp"
+        android:layout_below="@id/alert_container"
+        android:layout_marginTop="16dp"
+        android:layout_centerHorizontal="true"
+        android:padding="4dp" />
+</RelativeLayout>

@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/main"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#F0F4F8"
+    android:padding="24dp"
+    tools:context=".MainActivity">
+
+    <!-- Texto de datos recibidos -->
+    <TextView
+        android:id="@+id/txtDatosMovimiento"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Esperando datos del reloj..."
+        android:textSize="18sp"
+        android:textColor="#263238"
+        android:textStyle="bold"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <!-- Botón Saludar -->
+    <Button
+        android:id="@+id/dess"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Saludar"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#4CAF50"
+        app:layout_constraintTop_toBottomOf="@id/txtDatosMovimiento"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="32dp" />
+
+    <!-- Botón 2 -->
+    <Button
+        android:id="@+id/boton"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="BOTÓN 2"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#2196F3"
+        app:layout_constraintTop_toBottomOf="@id/dess"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+    <!-- Botón Conectar -->
+    <Button
+        android:id="@+id/conectar"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:text="Conectar"
+        android:textColor="#FFFFFF"
+        android:backgroundTint="#FF9800"
+        app:layout_constraintTop_toBottomOf="@id/boton"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        android:layout_marginTop="16dp" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>
