@@ -8,6 +8,8 @@
 
     <uses-feature android:name="android.hardware.type.watch" />
     <uses-feature android:name="android.hardware.sensor.accelerometer" android:required="true" />
+    <uses-feature android:name="android.hardware.sensor.heartrate" android:required="false"/>
+
 
 
     <application

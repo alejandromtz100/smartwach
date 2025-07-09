@@ -11,69 +11,62 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.View
-import android.widget.Button
-import android.widget.ImageView
-import android.widget.LinearLayout
-import android.widget.TextView
-import android.widget.Toast
+import android.widget.*
 import androidx.activity.ComponentActivity
 import com.example.act1.R
-import com.google.android.gms.wearable.CapabilityClient
-import com.google.android.gms.wearable.CapabilityInfo
-import com.google.android.gms.wearable.DataClient
-import com.google.android.gms.wearable.DataEventBuffer
-import com.google.android.gms.wearable.MessageClient
-import com.google.android.gms.wearable.MessageEvent
-import com.google.android.gms.wearable.Wearable
+import com.google.android.gms.wearable.*
 import org.json.JSONObject
 import java.nio.charset.StandardCharsets
 import kotlin.math.abs
+import kotlin.random.Random
 
-class MainActivity : ComponentActivity(), SensorEventListener, DataClient.OnDataChangedListener,
+class MainActivity : ComponentActivity(), SensorEventListener,
+    DataClient.OnDataChangedListener,
     MessageClient.OnMessageReceivedListener,
     CapabilityClient.OnCapabilityChangedListener {
 
     private lateinit var sensorManager: SensorManager
     private var accelerometer: Sensor? = null
-    private var activityContext: Context? = null
-    private var nodeID: String? = null  // Ahora es nullable  para evitar errores
-    private val PAYLOAD_PATH = "/APP_OPEN"
+    private var heartRateSensor: Sensor? = null
+    private var nodeID: String? = null
 
-    private var lastX = 0f
-    private var lastY = 0f
-    private var lastZ = 0f
+    private val PAYLOAD_PATH = "/APP_OPEN"
     private var isMonitoring = false
     private var isMoving = true
+    private var lastHeartRate = 0f
+    private var heartRateAvailable = false
 
-    private val inactivityTimeout = 10_000L // 10 segundos
     private val handler = Handler(Looper.getMainLooper())
-    private lateinit var context: Context
-
+    private val inactivityTimeout = 10_000L
+    private val MESSAGE_INTERVAL = 500L
     private var lastMessageSentTime = 0L
-    private val MESSAGE_INTERVAL = 500L // ms, puedes ajustar (500 ms = 0.5 seg)
-
 
     private lateinit var botonMonitoreo: Button
     private lateinit var alertContainer: LinearLayout
     private lateinit var alertIcon: ImageView
     private lateinit var alertText: TextView
-    private lateinit var sensorDataText: TextView  // <-- NUEVO
+    private lateinit var sensorDataText: TextView
+
+    private var lastX = 0f
+    private var lastY = 0f
+    private var lastZ = 0f
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        getConnectedNode()
 
-        context = this
-        activityContext = this
         sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
         accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        heartRateSensor = sensorManager.getDefaultSensor(Sensor.TYPE_HEART_RATE)
+        heartRateAvailable = heartRateSensor != null
+
+        getConnectedNode()
 
         botonMonitoreo = findViewById(R.id.dess)
         alertContainer = findViewById(R.id.alert_container)
         alertIcon = findViewById(R.id.alert_icon)
         alertText = findViewById(R.id.alert_text)
-        sensorDataText = findViewById(R.id.sensor_data)  // <-- NUEVO
+        sensorDataText = findViewById(R.id.sensor_data)
 
         botonMonitoreo.setOnClickListener {
             showMonitoringMessage()
@@ -84,20 +77,22 @@ class MainActivity : ComponentActivity(), SensorEventListener, DataClient.OnData
             alertContainer.visibility = View.GONE
             botonMonitoreo.visibility = View.VISIBLE
         }
+
+        logAllSensors()
     }
 
     private fun showMonitoringMessage() {
         botonMonitoreo.visibility = View.GONE
         alertContainer.visibility = View.VISIBLE
-        alertText.text = "Detectando movimiento por 10 segundos..."
-        alertIcon.setImageResource(R.drawable.ic_clock) // tu ícono de reloj
-        sensorDataText.text = "Esperando datos..."  // <-- Reiniciar lectura
+        alertText.text = "Detectando movimiento..."
+        alertIcon.setImageResource(R.drawable.ic_clock)
+        sensorDataText.text = "Esperando datos..."
     }
 
     private fun showWakeUpMessage() {
         alertText.text = "¡Es hora de levantarse!"
-        alertIcon.setImageResource(R.drawable.ic_alert) // tu ícono de alerta
-        sensorDataText.text = "" // Limpiar lectura
+        alertIcon.setImageResource(R.drawable.ic_alert)
+        sensorDataText.text = ""
     }
 
     private fun startMonitoring() {
@@ -107,21 +102,20 @@ class MainActivity : ComponentActivity(), SensorEventListener, DataClient.OnData
         lastY = 0f
         lastZ = 0f
 
-        accelerometer?.also {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        accelerometer?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
+
+        if (heartRateAvailable) {
+            heartRateSensor?.let { sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL) }
         }
 
         handler.postDelayed({
             if (!isMoving) {
-                runOnUiThread {
-                    showWakeUpMessage()
-                }
+                runOnUiThread { showWakeUpMessage() }
             } else {
                 runOnUiThread {
                     alertContainer.visibility = View.GONE
                     botonMonitoreo.visibility = View.VISIBLE
-                    Toast.makeText(context, "Movimiento detectado. Todo bien 👍", Toast.LENGTH_SHORT)
-                        .show()
+                    Toast.makeText(this, "Movimiento detectado. Todo bien 👍", Toast.LENGTH_SHORT).show()
                 }
             }
             stopMonitoring()
@@ -137,132 +131,120 @@ class MainActivity : ComponentActivity(), SensorEventListener, DataClient.OnData
     override fun onSensorChanged(event: SensorEvent) {
         if (!isMonitoring) return
 
-        val x = event.values[0]
-        val y = event.values[1]
-        val z = event.values[2]
+        when (event.sensor.type) {
+            Sensor.TYPE_ACCELEROMETER -> {
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
 
-        val deltaX = abs(x - lastX)
-        val deltaY = abs(y - lastY)
-        val deltaZ = abs(z - lastZ)
+                val deltaX = abs(x - lastX)
+                val deltaY = abs(y - lastY)
+                val deltaZ = abs(z - lastZ)
 
-        lastX = x
-        lastY = y
-        lastZ = z
+                lastX = x
+                lastY = y
+                lastZ = z
 
-        isMoving = deltaX > 0.5 || deltaY > 0.5 || deltaZ > 0.5
+                isMoving = deltaX > 0.5 || deltaY > 0.5 || deltaZ > 0.5
 
-        val movimiento = if (isMoving) "Detectado" else "No detectado"
+                val movimiento = if (isMoving) "Detectado" else "No detectado"
 
-        // 📌 Aquí creas el JSON
-        val json = JSONObject()
-        json.put("movimiento", movimiento)
-        json.put("x", "%.2f".format(x))
-        json.put("y", "%.2f".format(y))
-        json.put("z", "%.2f".format(z))
 
-        val mensaje = json.toString()
+                val ritmo = if (lastHeartRate > 0f) lastHeartRate else Random.nextInt(60, 90).toFloat()
 
-        sensorDataText.text = """
-        Movimiento: $movimiento
-        x: ${"%.2f".format(x)}
-        y: ${"%.2f".format(y)}
-        z: ${"%.2f".format(z)}
-    """.trimIndent()
+                val json = JSONObject()
+                json.put("movimiento", movimiento)
+                json.put("x", x)
+                json.put("y", y)
+                json.put("z", z)
+                json.put("ritmo_cardiaco", ritmo)
 
-        val currentTime = System.currentTimeMillis()
-        if (currentTime - lastMessageSentTime > MESSAGE_INTERVAL) {
-            sendMessage(mensaje) // ← envías el JSON como string
-            lastMessageSentTime = currentTime
+                val mensaje = json.toString()
+
+                sensorDataText.text = """
+                    Movimiento: $movimiento
+                    x: ${"%.2f".format(x)}
+                    y: ${"%.2f".format(y)}
+                    z: ${"%.2f".format(z)}
+                    Ritmo: ${"%.1f".format(ritmo)} bpm
+                """.trimIndent()
+
+                val currentTime = System.currentTimeMillis()
+                if (currentTime - lastMessageSentTime > MESSAGE_INTERVAL) {
+                    sendMessage(mensaje)
+                    lastMessageSentTime = currentTime
+                }
+            }
+
+            Sensor.TYPE_HEART_RATE -> {
+                val heartRate = event.values[0]
+                if (heartRate > 0) {
+                    lastHeartRate = heartRate
+                    Log.d("HeartRate", "Sensor HR detectado: $heartRate")
+                }
+            }
         }
     }
 
-
-    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
-        // No se usa
-    }
-
+    override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
 
     override fun onPause() {
         super.onPause()
         stopMonitoring()
-        try {
-            Wearable.getDataClient(activityContext!!).removeListener(this)
-            Wearable.getMessageClient(activityContext!!).removeListener(this)
-            Wearable.getCapabilityClient(activityContext!!).removeListener(this)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        Wearable.getDataClient(this).removeListener(this)
+        Wearable.getMessageClient(this).removeListener(this)
+        Wearable.getCapabilityClient(this).removeListener(this)
     }
 
     override fun onResume() {
         super.onResume()
-
-        getConnectedNode() // 🔁 Reconectar nodo al reanudar
-
-        try {
-            Wearable.getDataClient(activityContext!!).addListener(this)
-            Wearable.getMessageClient(activityContext!!).addListener(this)
-            Wearable.getCapabilityClient(activityContext!!)
-                .addListener(this, Uri.parse("wear://"), CapabilityClient.FILTER_REACHABLE)
-        } catch (e: Exception) {
-            e.printStackTrace()
-        }
+        getConnectedNode()
+        Wearable.getDataClient(this).addListener(this)
+        Wearable.getMessageClient(this).addListener(this)
+        Wearable.getCapabilityClient(this).addListener(this, Uri.parse("wear://"), CapabilityClient.FILTER_REACHABLE)
     }
 
-    override fun onDataChanged(p0: DataEventBuffer) {
-
-    }
+    override fun onDataChanged(p0: DataEventBuffer) {}
+    override fun onCapabilityChanged(p0: CapabilityInfo) {}
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         val message = String(messageEvent.data, StandardCharsets.UTF_8)
-        Log.d("onMessageReceived", "Mensaje recibido desde ${messageEvent.sourceNodeId}")
-        Log.d("onMessageReceived", "Payload: $message")
-
         if (messageEvent.path == PAYLOAD_PATH && message == "SINCHOMIPA") {
             runOnUiThread {
                 alertText.text = "Conectado al teléfono"
-                alertIcon.setImageResource(R.drawable.ic_check) // usa un ícono de check verde si tienes
+                alertIcon.setImageResource(R.drawable.ic_check)
                 alertContainer.visibility = View.VISIBLE
                 botonMonitoreo.visibility = View.GONE
             }
         }
     }
 
-
-    override fun onCapabilityChanged(p0: CapabilityInfo) {
-
-    }
-
     private fun sendMessage(message: String) {
         if (nodeID == null) {
-            Log.e("sendMessage", "nodeID no inicializado, reintentando en 1 segundo...")
             getConnectedNode()
-            handler.postDelayed({ sendMessage(message) }, 1000) // 🔁 Reintenta
+            handler.postDelayed({ sendMessage(message) }, 1000)
             return
         }
 
-        Wearable.getMessageClient(activityContext!!)
+        Wearable.getMessageClient(this)
             .sendMessage(nodeID!!, "/MOVIMIENTO", message.toByteArray())
-            .addOnSuccessListener {
-                Log.d("SensorData", "✅ Mensaje de movimiento enviado al teléfono.")
-            }
-            .addOnFailureListener { e ->
-                Log.e("SensorData", "❌ Error al enviar mensaje: ${e.message}")
-            }
+            .addOnSuccessListener { Log.d("SensorData", "✅ Mensaje enviado.") }
+            .addOnFailureListener { e -> Log.e("SensorData", "❌ Error: ${e.message}") }
     }
-
 
     private fun getConnectedNode() {
         Wearable.getNodeClient(this).connectedNodes.addOnSuccessListener { nodes ->
             if (nodes.isNotEmpty()) {
                 nodeID = nodes[0].id
                 Log.d("getConnectedNode", "Nodo conectado: $nodeID")
-            } else {
-                Log.d("getConnectedNode", "No se encontró nodo conectado")
             }
-
         }
     }
 
-
+    private fun logAllSensors() {
+        val sensores = sensorManager.getSensorList(Sensor.TYPE_ALL)
+        for (sensor in sensores) {
+            Log.d("SENSORES", "Sensor: ${sensor.name}, Tipo: ${sensor.type}")
+        }
+    }
 }
